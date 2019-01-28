@@ -26,6 +26,7 @@ extern int Slippage = 3;
 int Total, Ticket, Ticket2;
 double StopLossLevel, TakeProfitLevel, StopLevel;
 double risk = 0.02;
+double maxSpread = 30;
 
 // CREATE ZeroMQ Context
 Context context(PROJECT_NAME);
@@ -216,39 +217,45 @@ void InterpretZmqMessage(Socket &pSocket, string& compArray[]) {
    {
       case 1: 
          //InformPullClient(pSocket, "OPEN TRADE Instruction Received");
-         lots = CalculateLotSize(MathAbs(StrToDouble(compArray[4])-MarketInfo(compArray[3], MODE_BID)), compArray[3]);
-         if (compArray[2] == "1") {
-            StopLossLevel = StrToDouble(compArray[4]);
-            TakeProfitLevel = StrToDouble(compArray[5]);
-            //InformPullClient(pSocket, "Buy Order");
-            Ticket= OrderSend(compArray[3], OP_BUY, lots, MarketInfo(compArray[3], MODE_ASK), Slippage, StopLossLevel, TakeProfitLevel, "Buy(#" + MagicNumber + ")", MagicNumber, 0, DodgerBlue);
-            if(Ticket > 0) {
-               if (OrderSelect(Ticket, SELECT_BY_TICKET, MODE_TRADES)) {
-      				Print("BUY order opened : ", OrderOpenPrice());
-      				InformPullClient(pSocket, "OrderSend placed successfully");}
-                  } 
-               else {
-                  InformPullClient(pSocket, "OrderSend failed");
-                  Print("Error opening BUY order : ", GetLastError());
-               
-              }
-   			}
-   		if (compArray[2] == "0") {
-            StopLossLevel = StrToDouble(compArray[4]);
-            TakeProfitLevel = StrToDouble(compArray[5]);
-            //InformPullClient(pSocket, "Buy Order");
-            Ticket= OrderSend(compArray[3], OP_SELL, lots, MarketInfo(compArray[3], MODE_BID), Slippage, StopLossLevel, TakeProfitLevel, "Sell(#" + MagicNumber + ")", MagicNumber, 0, DodgerBlue);
-            if(Ticket > 0) {
-               if (OrderSelect(Ticket, SELECT_BY_TICKET, MODE_TRADES)) {
-      				Print("SELL order opened : ", OrderOpenPrice());
-      				InformPullClient(pSocket, "OrderSend placed successfully");}
-                  } 
-               else {
-                  InformPullClient(pSocket, "OrderSend failed");
-                  Print("Error opening SELL order : ", GetLastError());
-               
-              }
-   			}
+         if  (MarketInfo(compArray[3], MODE_SPREAD) < maxSpread){
+            lots = CalculateLotSize(MathAbs(StrToDouble(compArray[4])-MarketInfo(compArray[3], MODE_BID)), compArray[3]);
+            if (compArray[2] == "1") {
+               StopLossLevel = StrToDouble(compArray[4]);
+               TakeProfitLevel = StrToDouble(compArray[5]);
+               //InformPullClient(pSocket, "Buy Order");
+               Ticket= OrderSend(compArray[3], OP_BUY, lots, MarketInfo(compArray[3], MODE_ASK), Slippage, StopLossLevel, TakeProfitLevel, "Buy(#" + MagicNumber + ")", MagicNumber, 0, DodgerBlue);
+               if(Ticket > 0) {
+                  if (OrderSelect(Ticket, SELECT_BY_TICKET, MODE_TRADES)) {
+         				Print("BUY order opened : ", OrderOpenPrice());
+         				InformPullClient(pSocket, "OrderSend placed successfully");}
+                     } 
+                  else {
+                     InformPullClient(pSocket, "OrderSend failed");
+                     Print("Error opening BUY order : ", GetLastError());
+                  
+                 }
+      			}
+      		if (compArray[2] == "0") {
+               StopLossLevel = StrToDouble(compArray[4]);
+               TakeProfitLevel = StrToDouble(compArray[5]);
+               //InformPullClient(pSocket, "Buy Order");
+               Ticket= OrderSend(compArray[3], OP_SELL, lots, MarketInfo(compArray[3], MODE_BID), Slippage, StopLossLevel, TakeProfitLevel, "Sell(#" + MagicNumber + ")", MagicNumber, 0, DodgerBlue);
+               if(Ticket > 0) {
+                  if (OrderSelect(Ticket, SELECT_BY_TICKET, MODE_TRADES)) {
+         				Print("SELL order opened : ", OrderOpenPrice());
+         				InformPullClient(pSocket, "OrderSend placed successfully");}
+                     } 
+                  else {
+                     InformPullClient(pSocket, "OrderSend failed");
+                     Print("Error opening SELL order : ", GetLastError());
+                  
+                 }
+      			}
+   		}
+   		else {
+   		   Print("Spread was too high on ", compArray[3]);
+        		InformPullClient(pSocket, "Spread was too high");
+   		}
          break;
       case 2: 
          if (compArray[1] == "0"){
@@ -415,6 +422,9 @@ double CalculateLotSize(double SL, string pair){          //Calculate the size o
    //We apply the formula to calculate the position size and assign the value to the variable
    LotSize=(AccountBalance()*risk)/(SL*CalculateNormalizedDigits(pair)*nTickValue);
    LotSize=MathRound(LotSize/MarketInfo(pair, MODE_LOTSTEP))*MarketInfo(pair, MODE_LOTSTEP);
+   if (LotSize < 0.01){
+      LotSize = 0.01;
+   }
    return LotSize;
 }
 
