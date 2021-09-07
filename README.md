@@ -12,8 +12,4 @@ Also, the code doesn't check for errors.
 
 The only thing that I would mention, is that stop loss is passed as price, not in pips.
 
-The code is not properly tested, so use at your own risk and don't blame me for your lost money.
-
-On the other side, if you find any bugs in there, it would be heavily appreciated if you let me know.
-
-contact: davorak01@gmail.com
+The code is not properly tested, so use at your own risk.
